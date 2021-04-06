@@ -1,7 +1,7 @@
 extern crate minecraft_packet_derive;
 use minecraft_packet_derive::*;
 
-#[derive(Debug, MinecraftPacket)]
+#[derive(Debug, MinecraftPacket, PartialEq, Clone)]
 pub struct Test {
     data: u8,
     other: String,
@@ -48,7 +48,7 @@ fn main() {
         data: 5,
         other: String::from("heyyy"),
     };
-    let serialized = data.serialize().unwrap();
-    let deserialized = Test::deserialize(serialized.clone()).unwrap();
-    dbg!(serialized, deserialized);
+    let serialized = data.clone().serialize().unwrap();
+    let deserialized = Test::deserialize(serialized).unwrap();
+    assert_eq!(data, deserialized);
 }
