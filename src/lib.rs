@@ -32,6 +32,9 @@ pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
                     fn deserialize(mut input: Vec<u8>) -> Result<Self, &'static str> {
                         let input = input.as_mut_slice();
                         #(let (#fields2, input) = MinecraftPacketPart::build_from_minecraft_packet(input)?;)*
+                        if !input.is_empty() {
+                            return Err("A few bytes are remaining after deserialization.");
+                        }
                         Ok(#name {
                             #(#fields3,)*
                         })
