@@ -29,7 +29,7 @@ fn minecraft_packet_addition(_attr: TokenStream, input: TokenStream) -> TokenStr
 
                     fn deserialize(mut input: Vec<u8>) -> Result<Self, &'static str> {
                         let input = input.as_mut_slice();
-                        #(let #fields2 = MinecraftPacketPart::build_from_minecraft_packet(input)?;)*
+                        #(let (#fields2, input) = MinecraftPacketPart::build_from_minecraft_packet(input)?;)*
                         Ok(#name {
                             #(#fields3,)*
                         })
