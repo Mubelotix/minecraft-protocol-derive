@@ -1,7 +1,7 @@
-use minecraft_packet_derive::*;
+extern crate minecraft_packet_derive;
+use minecraft_packet_derive::minecraft_packet;
 
-
-#[derive(MinecraftPacket)]
+#[minecraft_packet]
 pub struct Test {
     data: u8,
     other: String,

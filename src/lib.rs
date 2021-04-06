@@ -3,8 +3,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
-#[proc_macro_derive(MinecraftPacket)]
-pub fn derive_answer_fn(input: TokenStream) -> TokenStream {
+fn minecraft_packet_addition(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let name = input.ident;
@@ -30,4 +29,11 @@ pub fn derive_answer_fn(input: TokenStream) -> TokenStream {
         Fields::Unnamed(_) => todo!("unnamed fields"),
         Fields::Unit => panic!("how did you put a variant in a struct??"),
     }.into()
+}
+
+
+#[proc_macro_attribute]
+pub fn minecraft_packet(attr: TokenStream, mut input: TokenStream) -> TokenStream {
+    input.extend(minecraft_packet_addition(attr, input.clone()));
+    input
 }
