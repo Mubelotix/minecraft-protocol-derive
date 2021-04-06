@@ -16,12 +16,23 @@ fn minecraft_packet_addition(_attr: TokenStream, input: TokenStream) -> TokenStr
     match data.fields {
         Fields::Named(fields) => {
             let fields = fields.named.into_iter().map(|field| field.ident.unwrap());
+            let fields2 = fields.clone();
+            let fields3 = fields.clone();
+
             quote! {
                 impl MinecraftPacket for #name {
                     fn serialize(self) -> Result<Vec<u8>, &'static str> {
                         let mut output = Vec::new();
                         #(self.#fields.append_minecraft_packet_part(&mut output)?;)*
                         Ok(output)
+                    }
+
+                    fn deserialize(mut input: Vec<u8>) -> Result<Self, &'static str> {
+                        let input = input.as_mut_slice();
+                        #(let #fields2 = MinecraftPacketPart::build_from_minecraft_packet(input)?;)*
+                        Ok(#name {
+                            #(#fields3,)*
+                        })
                     }
                 }
             }
