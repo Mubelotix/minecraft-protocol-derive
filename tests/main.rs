@@ -8,7 +8,7 @@ pub struct Test {
 }
 pub trait MinecraftPacket: Sized {
     fn serialize(self) -> Result<Vec<u8>, &'static str>;
-    fn deserialize(input: Vec<u8>) -> Result<Self, &'static str>;
+    fn deserialize(input: &mut [u8]) -> Result<Self, &'static str>;
 }
 
 pub trait MinecraftPacketPart: Sized {
@@ -48,7 +48,7 @@ fn main() {
         data: 5,
         other: String::from("heyyy"),
     };
-    let serialized = data.clone().serialize().unwrap();
-    let deserialized = Test::deserialize(serialized).unwrap();
+    let mut serialized = data.clone().serialize().unwrap();
+    let deserialized = Test::deserialize(&mut serialized).unwrap();
     assert_eq!(data, deserialized);
 }
