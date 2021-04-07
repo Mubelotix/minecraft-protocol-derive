@@ -187,6 +187,22 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         _ => return quote!(compile_error!("Unsupported data structure");).into(),
     };
 
+    // Collect lifetimes
+    let (lifetime_impl, lifetime_struct, lifetime) =
+        match input.generics.lifetimes().collect::<Vec<&_>>() {
+            lifetimes if lifetimes.is_empty() => (quote! {<'a>}, None, None),
+            lifetimes if lifetimes.len() == 1 => {
+                let lifetime = lifetimes[0].lifetime.clone();
+                (
+                    quote! {<#lifetime>},
+                    Some(quote! {<#lifetime>}),
+                    Some(quote! {#lifetime}),
+                )
+            }
+            _ => return quote!(compile_error!("Too many lifetimes");).into(),
+        };
+
+
     // Process variants one by one
     let mut serialization_arms = Vec::new();
     let mut deserialization_arms = Vec::new();
@@ -248,7 +264,7 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         let field_types = fields.iter().map(|field| &field.ty);
         let deserialization_arm = quote! {
             #discriminant_lit => {
-                #(let (#field_names, input) = #field_types::build_from_minecraft_packet(input)?;)*
+                #(let (#field_names, input) = <#field_types>::build_from_minecraft_packet(input)?;)*
                 Ok((#name::#variant_name {
                     #(#field_names2, )*
                 }, input))
@@ -276,12 +292,12 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
     // Derive MinecraftPacketPart
     {quote! {
         #[automatically_derived]
-        impl<'a> MinecraftPacketPart<'a> for #name {
+        impl#lifetime_impl MinecraftPacketPart#lifetime_impl for #name#lifetime_struct {
             fn append_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
                 #serialization_implementation
             }
 
-            fn build_from_minecraft_packet(input: &'a mut [u8]) -> Result<(Self, &'a mut [u8]), &'static str> {
+            fn build_from_minecraft_packet(input: &#lifetime mut [u8]) -> Result<(Self, &#lifetime mut [u8]), &'static str> {
                 #deserialization_implementation
             }
         }

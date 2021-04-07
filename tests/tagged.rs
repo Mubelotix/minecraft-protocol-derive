@@ -18,10 +18,25 @@ impl<'a> MinecraftPacketPart<'a> for u8 {
     }
 }
 
+impl<'a> MinecraftPacketPart<'a> for &'a str {
+    fn append_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
+        output.push(self.len() as u8);
+        output.extend_from_slice(self.as_bytes());
+        Ok(())
+    }
+
+    fn build_from_minecraft_packet(input: &'a mut [u8]) -> Result<(Self, &'a mut [u8]), &'static str> {
+        let (len, input) = input.split_first_mut().unwrap();
+        let (slice, input) = input.split_at_mut(*len as usize);
+        Ok((std::str::from_utf8(slice).unwrap(), input))
+    }
+}
+
+
 #[derive(MinecraftStructuredEnum)]
 #[discriminant(u8)]
-pub enum TestEnum {
+pub enum TestEnum<'a> {
     Teacher {student_count: u8, grade_average: u8},
     #[value = 5]
-    Farmer {root_meters_count: u8}
+    Farmer {root_meters_count: u8, name: &'a str}
 }
