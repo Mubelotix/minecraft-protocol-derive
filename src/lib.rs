@@ -211,10 +211,10 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
     // Process variants one by one
     let mut serialization_arms = Vec::new();
     let mut deserialization_arms = Vec::new();
-    let mut last_discriminant = 0;
+    let mut next_discriminant = 0;
     for variant in variants {
         // Collect variant data
-        let mut discriminant = last_discriminant + 1;
+        let mut discriminant = next_discriminant;
         for attr in variant.attrs {
             if let Some(path) = attr.path.segments.first() {
                 match path.ident.to_string().as_str() {
@@ -243,7 +243,7 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
             &format!("{}{}", discriminant, tag_type_string),
             Span::call_site().into(),
         ));
-        last_discriminant = discriminant;
+        next_discriminant = discriminant + 1;
         let variant_name = variant.ident;
         let fields = variant.fields;
         let fields = match fields {
