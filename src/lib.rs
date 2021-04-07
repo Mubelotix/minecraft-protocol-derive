@@ -63,9 +63,10 @@ pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
 pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
     // Collect data
     let argument_type = attr.to_string();
-    let representation_type = match argument_type.as_str() == "VarInt" {
-        true => "i32".to_string(),
-        false => argument_type.clone(),
+    let representation_type = match argument_type.as_str() {
+        "VarInt" => "i32".to_string(),
+        "i8" | "u8" | "i16" | "u16" | "i32" | "u32" | "i64" => argument_type.clone(),
+        _ => return quote!(compile_error!("Unsupported tag type");).into(),
     };
     let representation_ident = format_ident!("{}", representation_type);
     let input = parse_macro_input!(input as DeriveInput);
