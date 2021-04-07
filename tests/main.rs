@@ -1,7 +1,7 @@
 extern crate minecraft_packet_derive;
 use minecraft_packet_derive::*;
 
-#[derive(Debug, MinecraftPacket, PartialEq, Clone)]
+#[derive(Debug, MinecraftPacketPart, PartialEq, Clone)]
 pub struct Test<'a> {
     data: u8,
     other: &'a str,

@@ -3,7 +3,7 @@ use proc_macro::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, Lit, LitInt, punctuated::Punctuated};
 
-#[proc_macro_derive(MinecraftPacket)]
+#[proc_macro_derive(MinecraftPacketPart)]
 pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let (lifetime_impl, lifetime_struct, lifetime) =
