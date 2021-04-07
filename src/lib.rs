@@ -35,21 +35,17 @@ pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
 
             quote! {
                 #[automatically_derived]
-                impl#lifetime_impl MinecraftPacket#lifetime_impl for #name#lifetime_struct {
-                    fn serialize(self) -> Result<Vec<u8>, &'static str> {
-                        let mut output = Vec::new();
-                        #(self.#fields.append_minecraft_packet_part(&mut output)?;)*
-                        Ok(output)
+                impl#lifetime_impl MinecraftPacketPart#lifetime_impl for #name#lifetime_struct {
+                    fn serialize_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
+                        #(self.#fields.serialize_minecraft_packet_part(output)?;)*
+                        Ok(())
                     }
 
-                    fn deserialize(mut input: &#lifetime mut [u8]) -> Result<Self, &'static str> {
-                        #(let (#fields2, input) = MinecraftPacketPart::build_from_minecraft_packet(input)?;)*
-                        if !input.is_empty() {
-                            return Err("A few bytes are remaining after deserialization.");
-                        }
-                        Ok(#name {
+                    fn deserialize_minecraft_packet_part(input: &#lifetime mut [u8]) -> Result<(Self, &#lifetime mut [u8]), &'static str> {
+                        #(let (#fields2, input) = MinecraftPacketPart::deserialize_minecraft_packet_part(input)?;)*
+                        Ok((#name {
                             #(#fields3,)*
-                        })
+                        }, input))
                     }
                 }
             }
@@ -104,24 +100,24 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
         variant_value.push(discriminant);
     }
 
-    // Construct the append_minecraft_packet_part method
+    // Construct the serialize_minecraft_packet_part method
     let append_implementation = match argument_type.as_str() {
         "u8" => quote! {
             output.push(self as u8);
             Ok(())
         },
         "VarInt" => quote! {
-            VarInt(self as i32).append_minecraft_packet_part(output)
+            VarInt(self as i32).serialize_minecraft_packet_part(output)
         },
         _ => quote! {
-            (self as #representation_type).append_minecraft_packet_part(output)
+            (self as #representation_type).serialize_minecraft_packet_part(output)
         },
     };
 
-    // Construct the build_from_minecraft_packet method
+    // Construct the deserialize_minecraft_packet_part method
     let build_implementation = match argument_type.as_str() {
         "VarInt" => quote! {
-            let (id, input) = VarInt::build_from_minecraft_packet(input)?;
+            let (id, input) = VarInt::deserialize_minecraft_packet_part(input)?;
             let value = match id.0 {
                 #(#variant_value => #name::#variant_name,)*
                 _ => return Err(#unmatched_message),
@@ -129,7 +125,7 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
             Ok((value, input))
         },
         _ => quote! {
-            let (id, input) = #representation_ident::build_from_minecraft_packet(input)?;
+            let (id, input) = #representation_ident::deserialize_minecraft_packet_part(input)?;
             let value = match id {
                 #(#variant_value => #name::#variant_name,)*
                 _ => return Err(#unmatched_message),
@@ -145,11 +141,11 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
 
         #[automatically_derived]
         impl<'a> MinecraftPacketPart<'a> for #name {
-            fn append_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
+            fn serialize_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
                 #append_implementation
             }
 
-            fn build_from_minecraft_packet(input: &'a mut [u8]) -> Result<(Self, &'a mut [u8]), &'static str> {
+            fn deserialize_minecraft_packet_part(input: &'a mut [u8]) -> Result<(Self, &'a mut [u8]), &'static str> {
                 #build_implementation
             }
         }
@@ -258,14 +254,14 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         let serialization_arm = match varint {
             true => quote! {
                 #name::#variant_name{#(#field_names2, )*} => {
-                    VarInt(#discriminant_lit).append_minecraft_packet_part(output)?;
-                    #(#field_names.append_minecraft_packet_part(output)?;)*
+                    VarInt(#discriminant_lit).serialize_minecraft_packet_part(output)?;
+                    #(#field_names.serialize_minecraft_packet_part(output)?;)*
                 },
             },
             false => quote! {
                 #name::#variant_name{#(#field_names2, )*} => {
-                    #discriminant_lit.append_minecraft_packet_part(output)?;
-                    #(#field_names.append_minecraft_packet_part(output)?;)*
+                    #discriminant_lit.serialize_minecraft_packet_part(output)?;
+                    #(#field_names.serialize_minecraft_packet_part(output)?;)*
                 },
             }
         };
@@ -277,7 +273,7 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         let field_types = fields.iter().map(|field| &field.ty);
         let deserialization_arm = quote! {
             #discriminant_lit => {
-                #(let (#field_names, input) = <#field_types>::build_from_minecraft_packet(input)?;)*
+                #(let (#field_names, input) = <#field_types>::deserialize_minecraft_packet_part(input)?;)*
                 Ok((#name::#variant_name {
                     #(#field_names2, )*
                 }, input))
@@ -297,14 +293,14 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
     // Gather deserialization arms
     let deserialization_implementation = match varint {
         true => quote! {
-            let (id, input) = VarInt::build_from_minecraft_packet(input)?;
+            let (id, input) = VarInt::deserialize_minecraft_packet_part(input)?;
             match id.0 {
                 #(#deserialization_arms)*
                 _ => Err(#unmatched_message),
             }
         },
         false => quote! {
-            let (id, input) = #tag_type_ident::build_from_minecraft_packet(input)?;
+            let (id, input) = #tag_type_ident::deserialize_minecraft_packet_part(input)?;
             match id {
                 #(#deserialization_arms)*
                 _ => Err(#unmatched_message),
@@ -316,11 +312,11 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
     {quote! {
         #[automatically_derived]
         impl#lifetime_impl MinecraftPacketPart#lifetime_impl for #name#lifetime_struct {
-            fn append_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
+            fn serialize_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
                 #serialization_implementation
             }
 
-            fn build_from_minecraft_packet(input: &#lifetime mut [u8]) -> Result<(Self, &#lifetime mut [u8]), &'static str> {
+            fn deserialize_minecraft_packet_part(input: &#lifetime mut [u8]) -> Result<(Self, &#lifetime mut [u8]), &'static str> {
                 #deserialization_implementation
             }
         }
