@@ -162,6 +162,7 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident.clone();
     let mut tag_type_string = "u8".to_string();
+    let mut varint = false;
     for attr in input.attrs {
         if let Some(path) = attr.path.segments.first() {
             match path.ident.to_string().as_str() {
@@ -170,6 +171,10 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
                     if tag_type_string.starts_with('(') && tag_type_string.ends_with(')') {
                         tag_type_string.remove(tag_type_string.len() - 1);
                         tag_type_string.remove(0);
+                    }
+                    if tag_type_string == "VarInt" {
+                        tag_type_string = "i32".to_string();
+                        varint = true;
                     }
                 },
                 "value" => return quote!(compile_error!("Not the right place for value attribute");).into(),
@@ -250,12 +255,19 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         // Build a serialization arm
         let field_names = fields.iter().map(|field| field.ident.as_ref().unwrap());
         let field_names2 = fields.iter().map(|field| field.ident.as_ref().unwrap());
-        let serialization_arm = quote! {
-            #name::#variant_name{#(#field_names2, )*} => {
-                #discriminant_lit.append_minecraft_packet_part(output)?;
-                #(#field_names.append_minecraft_packet_part(output)?;)*
-                Ok(())
+        let serialization_arm = match varint {
+            true => quote! {
+                #name::#variant_name{#(#field_names2, )*} => {
+                    VarInt(#discriminant_lit).append_minecraft_packet_part(output)?;
+                    #(#field_names.append_minecraft_packet_part(output)?;)*
+                },
             },
+            false => quote! {
+                #name::#variant_name{#(#field_names2, )*} => {
+                    #discriminant_lit.append_minecraft_packet_part(output)?;
+                    #(#field_names.append_minecraft_packet_part(output)?;)*
+                },
+            }
         };
         serialization_arms.push(serialization_arm);
 
@@ -279,14 +291,24 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         match self {
             #(#serialization_arms)*
         }
+        Ok(())
     };
 
     // Gather deserialization arms
-    let deserialization_implementation = quote! {
-        let (id, input) = #tag_type_ident::build_from_minecraft_packet(input)?;
-        match id {
-            #(#deserialization_arms)*
-            _ => Err(#unmatched_message),
+    let deserialization_implementation = match varint {
+        true => quote! {
+            let (id, input) = VarInt::build_from_minecraft_packet(input)?;
+            match id.0 {
+                #(#deserialization_arms)*
+                _ => Err(#unmatched_message),
+            }
+        },
+        false => quote! {
+            let (id, input) = #tag_type_ident::build_from_minecraft_packet(input)?;
+            match id {
+                #(#deserialization_arms)*
+                _ => Err(#unmatched_message),
+            }
         }
     };
 
