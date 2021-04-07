@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use proc_macro::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, Lit, LitInt};
+use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, Lit, LitInt, punctuated::Punctuated};
 
 #[proc_macro_derive(MinecraftPacket)]
 pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
@@ -243,6 +243,7 @@ pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
         let fields = variant.fields;
         let fields = match fields {
             Fields::Named(fields) => fields.named,
+            Fields::Unit => Punctuated::new(),
             _ => return quote!(compile_error!("All fields must be named");).into(),
         };
 

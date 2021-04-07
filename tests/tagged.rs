@@ -38,5 +38,6 @@ impl<'a> MinecraftPacketPart<'a> for &'a str {
 pub enum TestEnum<'a> {
     Teacher {student_count: u8, grade_average: u8},
     #[value = 5]
-    Farmer {root_meters_count: u8, name: &'a str}
+    Farmer {root_meters_count: u8, name: &'a str},
+    NoOne,
 }
