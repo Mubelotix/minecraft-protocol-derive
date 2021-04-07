@@ -18,7 +18,7 @@ impl<'a> MinecraftPacketPart<'a> for u8 {
     }
 }
 
-#[derive(MinecraftTaggedPacketPart)]
+#[derive(MinecraftStructuredEnum)]
 #[discriminant(u8)]
 pub enum TestEnum {
     Teacher {student_count: u8, grade_average: u8},

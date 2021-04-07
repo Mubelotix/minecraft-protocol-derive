@@ -156,7 +156,7 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
     }}.into()
 }
 
-#[proc_macro_derive(MinecraftTaggedPacketPart, attributes(discriminant, value))]
+#[proc_macro_derive(MinecraftStructuredEnum, attributes(discriminant, value))]
 pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
     // Collect the data
     let input = parse_macro_input!(input as DeriveInput);
