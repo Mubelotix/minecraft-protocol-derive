@@ -155,3 +155,135 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
         }
     }}.into()
 }
+
+#[proc_macro_derive(MinecraftTaggedPacketPart, attributes(discriminant, value))]
+pub fn minecraft_tagged(input: TokenStream) -> TokenStream {
+    // Collect the data
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = input.ident.clone();
+    let mut tag_type_string = "u8".to_string();
+    for attr in input.attrs {
+        if let Some(path) = attr.path.segments.first() {
+            match path.ident.to_string().as_str() {
+                "discriminant" => {
+                    tag_type_string = attr.tokens.to_string();
+                    if tag_type_string.starts_with('(') && tag_type_string.ends_with(')') {
+                        tag_type_string.remove(tag_type_string.len() - 1);
+                        tag_type_string.remove(0);
+                    }
+                },
+                "value" => return quote!(compile_error!("Not the right place for value attribute");).into(),
+                _ => (),
+            }
+        }
+    }
+    let tag_type_ident = format_ident!("{}", tag_type_string);
+    let unmatched_message = format!(
+        "The {} ID is outside the definition range.",
+        name.to_string()
+    );
+    let variants = match input.data {
+        Data::Enum(variants) => variants.variants,
+        _ => return quote!(compile_error!("Unsupported data structure");).into(),
+    };
+
+    // Process variants one by one
+    let mut serialization_arms = Vec::new();
+    let mut deserialization_arms = Vec::new();
+    let mut last_discriminant = 0;
+    for variant in variants {
+        // Collect variant data
+        let mut discriminant = last_discriminant + 1;
+        for attr in variant.attrs {
+            if let Some(path) = attr.path.segments.first() {
+                match path.ident.to_string().as_str() {
+                    "discriminant" => return quote!(compile_error!("Not the right place for discriminant attribute");).into(),
+                    "value" => {
+                        let mut discriminant_string = attr.tokens.to_string();
+                        if discriminant_string.starts_with(' ') {
+                            discriminant_string.remove(0);
+                        }
+                        if discriminant_string.starts_with('=') {
+                            discriminant_string.remove(0);
+                        } else {
+                            return quote!(compile_error!("Invalid value attribute");).into();
+                        }
+                        if discriminant_string.starts_with(' ') {
+                            discriminant_string.remove(0);
+                        }
+                        println!("{}", discriminant_string);
+                        discriminant = discriminant_string.parse().unwrap();
+                    },
+                    _ => (),
+                }
+            }
+        }
+        let discriminant_lit = Lit::Int(LitInt::new(
+            &format!("{}{}", discriminant, tag_type_string),
+            Span::call_site().into(),
+        ));
+        last_discriminant = discriminant;
+        let variant_name = variant.ident;
+        let fields = variant.fields;
+        let fields = match fields {
+            Fields::Named(fields) => fields.named,
+            _ => return quote!(compile_error!("All fields must be named");).into(),
+        };
+
+        // Build a serialization arm
+        let field_names = fields.iter().map(|field| field.ident.as_ref().unwrap());
+        let field_names2 = fields.iter().map(|field| field.ident.as_ref().unwrap());
+        let serialization_arm = quote! {
+            #name::#variant_name{#(#field_names2, )*} => {
+                #discriminant_lit.append_minecraft_packet_part(output)?;
+                #(#field_names.append_minecraft_packet_part(output)?;)*
+                Ok(())
+            },
+        };
+        serialization_arms.push(serialization_arm);
+
+        // Build a deserialization arm
+        let field_names = fields.iter().map(|field| field.ident.as_ref().unwrap());
+        let field_names2 = fields.iter().map(|field| field.ident.as_ref().unwrap());
+        let field_types = fields.iter().map(|field| &field.ty);
+        let deserialization_arm = quote! {
+            #discriminant_lit => {
+                #(let (#field_names, input) = #field_types::build_from_minecraft_packet(input)?;)*
+                Ok((#name::#variant_name {
+                    #(#field_names2, )*
+                }, input))
+            },
+        };
+        deserialization_arms.push(deserialization_arm);
+    }
+
+    // Gather serialization arms
+    let serialization_implementation = quote! {
+        match self {
+            #(#serialization_arms)*
+        }
+    };
+
+    // Gather deserialization arms
+    let deserialization_implementation = quote! {
+        let (id, input) = #tag_type_ident::build_from_minecraft_packet(input)?;
+        match id {
+            #(#deserialization_arms)*
+            _ => Err(#unmatched_message),
+        }
+    };
+
+    // Derive MinecraftPacketPart
+    {quote! {
+        #[automatically_derived]
+        impl<'a> MinecraftPacketPart<'a> for #name {
+            fn append_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
+                #serialization_implementation
+            }
+
+            fn build_from_minecraft_packet(input: &'a mut [u8]) -> Result<(Self, &'a mut [u8]), &'static str> {
+                #deserialization_implementation
+            }
+        }
+    }}.into()
+}
