@@ -104,7 +104,6 @@ pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
                                 if discriminant_string.starts_with(' ') {
                                     discriminant_string.remove(0);
                                 }
-                                println!("{}", discriminant_string);
                                 discriminant = discriminant_string.parse().unwrap();
                             },
                             _ => (),
@@ -229,7 +228,6 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut last_discriminant = 0;
     for variant in data.variants {
         let discriminant = if let Some((_, Expr::Lit(d))) = variant.discriminant {
-            println!("{:?}", d);
             if let Lit::Int(d) = d.lit {
                 d.base10_parse::<i64>().unwrap()
             } else {
@@ -257,7 +255,7 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
             VarInt(self as i32).serialize_minecraft_packet_part(output)
         },
         _ => quote! {
-            (self as #representation_type).serialize_minecraft_packet_part(output)
+            (self as #representation_ident).serialize_minecraft_packet_part(output)
         },
     };
 

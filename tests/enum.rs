@@ -59,3 +59,11 @@ pub enum TestEnum {
     East = 54,
     South,
 }
+
+#[minecraft_enum(u32)]
+pub enum TestEnum2 {
+    West = 1,
+    North,
+    East = 54,
+    South,
+}
