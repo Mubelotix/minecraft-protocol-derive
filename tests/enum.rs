@@ -60,9 +60,9 @@ pub enum TestEnum {
     South,
 }
 
-#[minecraft_enum(u32)]
+#[minecraft_enum(u8)]
 pub enum TestEnum2 {
-    West = 1,
+    West,
     North,
     East = 54,
     South,

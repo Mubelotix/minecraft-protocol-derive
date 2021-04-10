@@ -225,18 +225,18 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
     // Analyse enum variants
     let mut variant_name = Vec::new();
     let mut variant_value = Vec::new();
-    let mut last_discriminant = 0;
+    let mut next_discriminant = 0;
     for variant in data.variants {
         let discriminant = if let Some((_, Expr::Lit(d))) = variant.discriminant {
             if let Lit::Int(d) = d.lit {
                 d.base10_parse::<i64>().unwrap()
             } else {
-                last_discriminant + 1
+                next_discriminant
             }
         } else {
-            last_discriminant + 1
+            next_discriminant
         };
-        last_discriminant = discriminant;
+        next_discriminant = discriminant + 1;
         let discriminant = Lit::Int(LitInt::new(
             &format!("{}{}", discriminant, representation_type),
             Span::call_site().into(),
