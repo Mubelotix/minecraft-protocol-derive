@@ -2,7 +2,7 @@ extern crate proc_macro;
 use proc_macro::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Expr, Fields, Lit, LitInt,
+    parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Expr, Fields, Lit, LitInt, ExprUnary, UnOp, token::Sub
 };
 
 #[proc_macro_derive(MinecraftPacketPart, attributes(discriminant, value))]
@@ -231,7 +231,17 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
             if let Lit::Int(d) = d.lit {
                 d.base10_parse::<i64>().unwrap()
             } else {
-                next_discriminant
+                panic!("The expression of variant discriminant is not an integer literal")
+            }
+        } else if let Some((_, Expr::Unary(ExprUnary {op: UnOp::Neg(_), expr, ..}))) = variant.discriminant {
+            if let Expr::Lit(expr) = *expr {
+                if let Lit::Int(d) = expr.lit {
+                    -d.base10_parse::<i64>().unwrap()
+                } else {
+                    panic!("The expression after negation of variant discriminant is not an integer literal")
+                }
+            } else {
+                panic!("No expression after negation of variant discriminant")
             }
         } else {
             next_discriminant

@@ -36,6 +36,18 @@ impl<'a> MinecraftPacketPart<'a> for u8 {
     }
 }
 
+impl<'a> MinecraftPacketPart<'a> for i8 {
+    fn serialize_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
+        Ok(())
+    }
+
+    fn deserialize_minecraft_packet_part(
+        input: &mut [u8],
+    ) -> Result<(Self, &mut [u8]), &'static str> {
+        Ok((0, input))
+    }
+}
+
 impl<'a> MinecraftPacketPart<'a> for &'a str {
     fn serialize_minecraft_packet_part(self, output: &mut Vec<u8>) -> Result<(), &'static str> {
         output.push(self.len() as u8);
@@ -60,9 +72,9 @@ pub enum TestEnum {
     South,
 }
 
-#[minecraft_enum(u8)]
+#[minecraft_enum(i8)]
 pub enum TestEnum2 {
-    West,
+    West = -1,
     North,
     East = 54,
     South,
