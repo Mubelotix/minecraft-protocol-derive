@@ -39,7 +39,7 @@ pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
                             Ok(())
                         }
                         
-                        fn deserialize_minecraft_packet_part(input: &#lifetime mut [u8]) -> Result<(Self, &#lifetime mut [u8]), &'static str> {
+                        fn deserialize_minecraft_packet_part(input: &#lifetime [u8]) -> Result<(Self, &#lifetime [u8]), &'static str> {
                             #(let (#fields2, input) = MinecraftPacketPart::deserialize_minecraft_packet_part(input)?;)*
                             Ok((#name {
                                 #(#fields3,)*
@@ -191,7 +191,7 @@ pub fn minecraft_packet_derive(input: TokenStream) -> TokenStream {
                         #serialization_implementation
                     }
 
-                    fn deserialize_minecraft_packet_part(input: &#lifetime mut [u8]) -> Result<(Self, &#lifetime mut [u8]), &'static str> {
+                    fn deserialize_minecraft_packet_part(input: &#lifetime [u8]) -> Result<(Self, &#lifetime [u8]), &'static str> {
                         #deserialization_implementation
                     }
                 }
@@ -300,7 +300,7 @@ pub fn minecraft_enum(attr: TokenStream, input: TokenStream) -> TokenStream {
                 #append_implementation
             }
 
-            fn deserialize_minecraft_packet_part(input: &'a mut [u8]) -> Result<(Self, &'a mut [u8]), &'static str> {
+            fn deserialize_minecraft_packet_part(input: &'a [u8]) -> Result<(Self, &'a [u8]), &'static str> {
                 #build_implementation
             }
         }
